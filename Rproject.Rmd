@@ -1,0 +1,103 @@
+---
+title: "Machine Learning Final Project"
+author: "Haoyu Wang"
+date: "2017-09-4"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Import data and package
+
+```{r}
+library(AppliedPredictiveModeling)
+library(caret)
+library(rattle)
+library(rpart.plot)
+library(randomForest)
+setwd("C:/Users/May/Documents")
+df_training<-read.csv("pml-training.csv", na.strings=c("NA",""))
+df_testing<-read.csv("pml-testing.csv", na.strings=c("NA",""))
+colnames_train <- colnames(df_training)
+colnames_test <- colnames(df_testing)
+set.seed(1213)
+
+```
+## 2.Clean Data
+```{r}
+
+# Count the number of non-NAs.
+nonNAs <- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(!is.na(x)))))
+}
+
+# drop NA columns.
+colcnts <- nonNAs(df_training)
+drops <- c()
+for (cnt in 1:length(colcnts)) {
+    if (colcnts[cnt] < nrow(df_training)) {
+        drops <- c(drops, colnames_train[cnt])
+    }
+}
+
+# Drop NA data and the first 7 columns are unnecessary for predicting.
+df_training <- df_training[,!(names(df_training) %in% drops)]
+df_training <- df_training[,8:length(colnames(df_training))]
+
+df_testing <- df_testing[,!(names(df_testing) %in% drops)]
+df_testing <- df_testing[,8:length(colnames(df_testing))]
+
+
+```
+
+## 3.partition Data
+as the performence of my PC, I can only set P to 0.25.
+
+```{r}
+intrain<-createDataPartition(y=df_training$classe,p=0.25,list=FALSE)
+training<-df_training[intrain,]
+testing<-df_training[-intrain,]
+
+```
+
+## 4.Try different models
+
+### 1. try predict tree
+
+```{r}
+
+modTree<-train(classe~., data=training,method="rpart")
+fancyRpartPlot(modTree$finalModel)
+predTree<-predict(modTree,testing)
+confusionMatrix(predTree,testing$classe)
+
+
+```
+As we can see the predict tree result is not so good. The Accuracy is only 0.5219. it is not so good.
+
+### 2. try random forest
+
+```{r}
+modRF<-train(classe~., data=training,method="rf",prox=TRUE)
+predRF<-predict(modRF,testing)
+confusionMatrix(predRF,testing$classe)
+
+
+```
+the Acuracy is 0.9782. the model is good to use.
+
+
+##CONCLUSION
+
+```{r}
+predFinal<-predict(modRF,df_testing)
+
+predFinal
+
+```
+the result of prediction of testing set is "B A B A A E D B A A B C B A E E A B B B"
